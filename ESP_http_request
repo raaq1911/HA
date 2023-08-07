@@ -1,0 +1,40 @@
+http_request:
+  useragent: esphome/device
+  timeout: 10s
+  id: http_podlewanie
+  
+binary_sensor:
+  - platform: template
+    name: "Podlewanie Linia 1 remote"
+    id: podlewanie_linia_1_remote
+
+  - platform: gpio
+    name: "Przycisk Linia 1"
+    pin:
+      pcf8574: pcf8574_hub2
+      number: 12
+      mode:
+        input: true
+      inverted: true
+    on_click:
+    - min_length: 1ms
+      max_length: 999ms
+      then:
+        - http_request.get:
+            url: http://192.168.70.81/switch/podlewanie_linia_1
+            on_response:
+              then:
+                - lambda: |-
+                    json::parse_json(id(http_podlewanie).get_string(), [](JsonObject root) {
+                       id(podlewanie_linia_1_remote).publish_state(root["value"]);
+                    });
+                - if:
+                    condition:
+                       - binary_sensor.is_off: podlewanie_linia_1_remote
+                    then:
+                     - http_request.post: "http://192.168.70.81/switch/linia_1_15min/turn_on"
+                    else:
+                     - http_request.post: "http://192.168.70.81/switch/linia_1_15min/turn_off"
+					 
+					 
+					 
